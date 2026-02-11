@@ -5,6 +5,7 @@ export default function AudioRecorder({ user }) {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const stopTimeoutRef = useRef(null);
+  const maxDurationMs = 10000;
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState("");
   const [status, setStatus] = useState("Idle");
@@ -28,6 +29,14 @@ export default function AudioRecorder({ user }) {
         }
       };
 
+      mediaRecorder.onstart = () => {
+        setStartedAt(new Date());
+        setStatus("Recording (10s max)...");
+        stopTimeoutRef.current = setTimeout(() => {
+          stopRecording();
+        }, maxDurationMs);
+      };
+
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         const url = URL.createObjectURL(blob);
@@ -36,13 +45,7 @@ export default function AudioRecorder({ user }) {
       };
 
       mediaRecorder.start();
-      setStartedAt(new Date());
       setIsRecording(true);
-      setStatus("Recording (10s max)...");
-
-      stopTimeoutRef.current = setTimeout(() => {
-        stopRecording();
-      }, 10000);
     } catch (err) {
       setError("Microphone access was denied.");
       setStatus("Idle");
