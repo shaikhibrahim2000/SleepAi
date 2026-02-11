@@ -20,6 +20,10 @@ Frontend expects:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
+Backend expects:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
 ## Notes
 - `api/mcp_agent.py` is a placeholder until MCP is wired in.
 - `api/audio_processor.py` contains a minimal Librosa pipeline.

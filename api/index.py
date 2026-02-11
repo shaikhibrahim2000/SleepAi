@@ -1,8 +1,13 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-from .audio_processor import analyze_audio
-from .mcp_agent import summarize_sleep
+#from .mcp_agent import summarize_sleep
+
+
+class AnalyzeRequest(BaseModel):
+    sleep_session_id: str
+    audio_path: str
 
 app = FastAPI(title="Sleep Sound Analysis API")
 
@@ -21,10 +26,12 @@ async def health():
 
 
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
-    payload = await file.read()
-    analysis = analyze_audio(payload)
-    return {"analysis": analysis}
+async def analyze(payload: AnalyzeRequest):
+    # Phase 3.0: smoke test endpoint
+    return {
+        "received": payload.model_dump(),
+        "message": "Analyze endpoint is live. Storage fetch + analysis comes next.",
+    }
 
 
 @app.post("/assistant")
