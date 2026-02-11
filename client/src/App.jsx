@@ -1,8 +1,35 @@
+import { useEffect, useState } from "react";
 import AudioRecorder from "./components/AudioRecorder.jsx";
 import Dashboard from "./components/Dashboard.jsx";
 import ChatInterface from "./components/ChatInterface.jsx";
+import AuthPanel from "./components/AuthPanel.jsx";
+import UploadsList from "./components/UploadsList.jsx";
+import { supabase } from "./services/supabase.js";
 
 export default function App() {
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!ignore) {
+        setSession(data.session);
+      }
+    };
+
+    loadSession();
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+    });
+
+    return () => {
+      ignore = true;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6">
       <div className="mx-auto max-w-5xl space-y-6">
@@ -14,10 +41,17 @@ export default function App() {
           </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <AudioRecorder />
-          <ChatInterface />
-        </div>
+        {!session ? (
+          <AuthPanel />
+        ) : (
+          <>
+            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <AudioRecorder user={session.user} />
+              <ChatInterface />
+            </div>
+            <UploadsList user={session.user} />
+          </>
+        )}
 
         <Dashboard />
       </div>
