@@ -35,7 +35,17 @@ export default function App() {
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="space-y-2">
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Sleep Sound Analysis</p>
-          <h1 className="text-3xl font-semibold">AI-Powered Sleep Sound Analysis</h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-3xl font-semibold">AI-Powered Sleep Sound Analysis</h1>
+            {session ? (
+              <button
+                className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold text-slate-200"
+                onClick={() => supabase.auth.signOut()}
+              >
+                Sign out
+              </button>
+            ) : null}
+          </div>
           <p className="text-slate-300">
             Record nocturnal audio, analyze disturbances, and chat with an AI assistant for insights.
           </p>
