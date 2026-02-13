@@ -87,7 +87,10 @@ async def analyze(payload: AnalyzeRequest):
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Analyze failed: {exc}") from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"Analyze failed ({exc.__class__.__name__}): {exc!r}",
+        ) from exc
 
     return {
         "sleep_session_id": payload.sleep_session_id,

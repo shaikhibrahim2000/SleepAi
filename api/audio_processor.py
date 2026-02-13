@@ -2,6 +2,7 @@ import tempfile
 import urllib.request
 import numpy as np
 import librosa
+import audioread
 
 
 def download_audio_bytes(url: str) -> bytes:
@@ -14,7 +15,12 @@ def decode_duration_seconds(audio_bytes: bytes, suffix: str = ".webm") -> float:
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp_file:
         tmp_file.write(audio_bytes)
         tmp_file.flush()
-        waveform, sample_rate = librosa.load(tmp_file.name, sr=None, mono=True)
+        try:
+            waveform, sample_rate = librosa.load(tmp_file.name, sr=None, mono=True)
+        except audioread.exceptions.NoBackendError as exc:
+            raise RuntimeError(
+                "Audio decode backend unavailable. Install ffmpeg for webm decoding."
+            ) from exc
     return float(len(waveform) / sample_rate)
 
 
