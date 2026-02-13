@@ -16,18 +16,19 @@ class AnalyzeRequest(BaseModel):
     audio_path: str
 
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SLEEP_AUDIO_BUCKET = "sleep-audio"
 
 
 def get_supabase_client() -> Client:
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+    if not supabase_url or not supabase_service_role_key:
         raise HTTPException(
             status_code=500,
             detail="Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
         )
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    return create_client(supabase_url, supabase_service_role_key)
 
 
 def normalize_audio_path(path: str) -> str:
@@ -57,18 +58,22 @@ async def health():
 @app.post("/analyze")
 async def analyze(payload: AnalyzeRequest):
     # Phase 3.1: create a signed URL for private bucket audio.
-    client = get_supabase_client()
-    object_path = normalize_audio_path(payload.audio_path)
-    signed = client.storage.from_(SLEEP_AUDIO_BUCKET).create_signed_url(
-        object_path, 60
-    )
-
-    signed_url = signed.get("signedURL")
-    if not signed_url:
-        raise HTTPException(
-            status_code=400,
-            detail="Failed to create signed URL. Check bucket/path and policies.",
+    try:
+        client = get_supabase_client()
+        object_path = normalize_audio_path(payload.audio_path)
+        signed = client.storage.from_(SLEEP_AUDIO_BUCKET).create_signed_url(
+            object_path, 60
         )
+        signed_url = signed.get("signedURL") if isinstance(signed, dict) else None
+        if not signed_url:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to create signed URL. Check bucket/path and policies.",
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Analyze failed: {exc}") from exc
 
     return {
         "sleep_session_id": payload.sleep_session_id,
