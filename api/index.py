@@ -1,8 +1,10 @@
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 from supabase import Client, create_client
 
 try:
@@ -17,6 +19,10 @@ class AnalyzeRequest(BaseModel):
 
 
 SLEEP_AUDIO_BUCKET = "sleep-audio"
+API_DIR = Path(__file__).resolve().parent
+
+# Load backend secrets from api/.env for local development.
+load_dotenv(API_DIR / ".env")
 
 
 def get_supabase_client() -> Client:

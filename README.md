@@ -24,6 +24,9 @@ Backend expects:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
+Local backend env file:
+- `api/.env` (auto-loaded by `python-dotenv`)
+
 ## Notes
 - `api/mcp_agent.py` is a placeholder until MCP is wired in.
 - `api/audio_processor.py` contains a minimal Librosa pipeline.
