@@ -8,3 +8,4 @@ client/.env.local
 __pycache__
 *.pyc
 .venv
+api/.env
