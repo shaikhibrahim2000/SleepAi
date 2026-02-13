@@ -1,6 +1,21 @@
-import io
+import tempfile
+import urllib.request
 import numpy as np
 import librosa
+
+
+def download_audio_bytes(url: str) -> bytes:
+    with urllib.request.urlopen(url, timeout=30) as response:
+        return response.read()
+
+
+def decode_duration_seconds(audio_bytes: bytes, suffix: str = ".webm") -> float:
+    # Librosa works more reliably when decoding from a real temp file.
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp_file:
+        tmp_file.write(audio_bytes)
+        tmp_file.flush()
+        waveform, sample_rate = librosa.load(tmp_file.name, sr=None, mono=True)
+    return float(len(waveform) / sample_rate)
 
 
 def analyze_audio(audio_bytes: bytes):

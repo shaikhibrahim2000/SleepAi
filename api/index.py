@@ -12,6 +12,11 @@ try:
 except ImportError:
     from mcp_agent import summarize_sleep
 
+try:
+    from .audio_processor import download_audio_bytes, decode_duration_seconds
+except ImportError:
+    from audio_processor import download_audio_bytes, decode_duration_seconds
+
 
 class AnalyzeRequest(BaseModel):
     sleep_session_id: str
@@ -63,7 +68,7 @@ async def health():
 
 @app.post("/analyze")
 async def analyze(payload: AnalyzeRequest):
-    # Phase 3.1: create a signed URL for private bucket audio.
+    # Phase 3.2: fetch private audio and decode duration only.
     try:
         client = get_supabase_client()
         object_path = normalize_audio_path(payload.audio_path)
@@ -76,6 +81,9 @@ async def analyze(payload: AnalyzeRequest):
                 status_code=400,
                 detail="Failed to create signed URL. Check bucket/path and policies.",
             )
+        extension = Path(object_path).suffix or ".webm"
+        audio_bytes = download_audio_bytes(signed_url)
+        duration_sec = decode_duration_seconds(audio_bytes, suffix=extension)
     except HTTPException:
         raise
     except Exception as exc:
@@ -84,8 +92,8 @@ async def analyze(payload: AnalyzeRequest):
     return {
         "sleep_session_id": payload.sleep_session_id,
         "audio_path": object_path,
-        "signed_url": signed_url,
-        "message": "Storage access verified. Audio fetch + signal processing comes next.",
+        "duration_sec": duration_sec,
+        "message": "Audio download + decode verified. Feature extraction comes next.",
     }
 
 
