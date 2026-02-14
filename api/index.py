@@ -13,9 +13,9 @@ except ImportError:
     from mcp_agent import summarize_sleep
 
 try:
-    from .audio_processor import download_audio_bytes, decode_duration_seconds
+    from .audio_processor import download_audio_bytes, decode_audio_bytes, extract_features
 except ImportError:
-    from audio_processor import download_audio_bytes, decode_duration_seconds
+    from audio_processor import download_audio_bytes, decode_audio_bytes, extract_features
 
 
 class AnalyzeRequest(BaseModel):
@@ -68,7 +68,7 @@ async def health():
 
 @app.post("/analyze")
 async def analyze(payload: AnalyzeRequest):
-    # Phase 3.2: fetch private audio and decode duration only.
+    # Phase 3.3: fetch private audio, decode waveform, and return base features.
     try:
         client = get_supabase_client()
         object_path = normalize_audio_path(payload.audio_path)
@@ -83,7 +83,8 @@ async def analyze(payload: AnalyzeRequest):
             )
         extension = Path(object_path).suffix or ".webm"
         audio_bytes = download_audio_bytes(signed_url)
-        duration_sec = decode_duration_seconds(audio_bytes, suffix=extension)
+        waveform, sample_rate = decode_audio_bytes(audio_bytes, suffix=extension)
+        features = extract_features(waveform, sample_rate)
     except HTTPException:
         raise
     except Exception as exc:
@@ -95,8 +96,14 @@ async def analyze(payload: AnalyzeRequest):
     return {
         "sleep_session_id": payload.sleep_session_id,
         "audio_path": object_path,
-        "duration_sec": duration_sec,
-        "message": "Audio download + decode verified. Feature extraction comes next.",
+        "duration_sec": features["duration_sec"],
+        "features": {
+            "rms_mean": features["rms_mean"],
+            "rms_max": features["rms_max"],
+            "spectral_centroid_mean": features["spectral_centroid_mean"],
+            "spectral_centroid_max": features["spectral_centroid_max"],
+        },
+        "message": "Feature extraction complete. Disturbance detection comes next.",
     }
 
 

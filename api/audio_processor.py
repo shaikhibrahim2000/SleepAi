@@ -10,7 +10,7 @@ def download_audio_bytes(url: str) -> bytes:
         return response.read()
 
 
-def decode_duration_seconds(audio_bytes: bytes, suffix: str = ".webm") -> float:
+def decode_audio_bytes(audio_bytes: bytes, suffix: str = ".webm") -> tuple[np.ndarray, int]:
     # Librosa works more reliably when decoding from a real temp file.
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp_file:
         tmp_file.write(audio_bytes)
@@ -21,31 +21,24 @@ def decode_duration_seconds(audio_bytes: bytes, suffix: str = ".webm") -> float:
             raise RuntimeError(
                 "Audio decode backend unavailable. Install ffmpeg for webm decoding."
             ) from exc
-    return float(len(waveform) / sample_rate)
+    return waveform, sample_rate
 
 
-def analyze_audio(audio_bytes: bytes):
-    """
-    Minimal stub: loads audio, extracts basic features, returns a simple score.
-    """
-    with io.BytesIO(audio_bytes) as buffer:
-        y, sr = librosa.load(buffer, sr=None, mono=True)
+def extract_features(waveform: np.ndarray, sample_rate: int) -> dict:
+    duration_sec = float(len(waveform) / sample_rate)
 
-    duration_sec = float(len(y) / sr)
-    rms = librosa.feature.rms(y=y).flatten()
+    rms = librosa.feature.rms(y=waveform).flatten()
     rms_mean = float(np.mean(rms))
     rms_max = float(np.max(rms))
 
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    mfcc_mean = float(np.mean(mfcc))
-
-    # Simple heuristic score (0-100). Replace with real model later.
-    score = 100 - min(100, int(rms_mean * 1000))
+    centroid = librosa.feature.spectral_centroid(y=waveform, sr=sample_rate).flatten()
+    spectral_centroid_mean = float(np.mean(centroid))
+    spectral_centroid_max = float(np.max(centroid))
 
     return {
         "duration_sec": duration_sec,
         "rms_mean": rms_mean,
         "rms_max": rms_max,
-        "mfcc_mean": mfcc_mean,
-        "sleep_quality_score": score,
+        "spectral_centroid_mean": spectral_centroid_mean,
+        "spectral_centroid_max": spectral_centroid_max,
     }
