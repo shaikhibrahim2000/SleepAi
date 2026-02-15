@@ -13,9 +13,19 @@ except ImportError:
     from mcp_agent import summarize_sleep
 
 try:
-    from .audio_processor import download_audio_bytes, decode_audio_bytes, extract_features
+    from .audio_processor import (
+        download_audio_bytes,
+        decode_audio_bytes,
+        extract_features,
+        detect_disturbances,
+    )
 except ImportError:
-    from audio_processor import download_audio_bytes, decode_audio_bytes, extract_features
+    from audio_processor import (
+        download_audio_bytes,
+        decode_audio_bytes,
+        extract_features,
+        detect_disturbances,
+    )
 
 
 class AnalyzeRequest(BaseModel):
@@ -68,7 +78,7 @@ async def health():
 
 @app.post("/analyze")
 async def analyze(payload: AnalyzeRequest):
-    # Phase 3.3: fetch private audio, decode waveform, and return base features.
+    # Phase 3.4: fetch private audio, decode waveform, and detect disturbances.
     try:
         client = get_supabase_client()
         object_path = normalize_audio_path(payload.audio_path)
@@ -85,6 +95,7 @@ async def analyze(payload: AnalyzeRequest):
         audio_bytes = download_audio_bytes(signed_url)
         waveform, sample_rate = decode_audio_bytes(audio_bytes, suffix=extension)
         features = extract_features(waveform, sample_rate)
+        disturbances = detect_disturbances(waveform, sample_rate)
     except HTTPException:
         raise
     except Exception as exc:
@@ -103,7 +114,9 @@ async def analyze(payload: AnalyzeRequest):
             "spectral_centroid_mean": features["spectral_centroid_mean"],
             "spectral_centroid_max": features["spectral_centroid_max"],
         },
-        "message": "Feature extraction complete. Disturbance detection comes next.",
+        "disturbance_count": len(disturbances),
+        "disturbances": disturbances,
+        "message": "Disturbance detection complete. Sleep score calculation comes next.",
     }
 
 

@@ -42,3 +42,37 @@ def extract_features(waveform: np.ndarray, sample_rate: int) -> dict:
         "spectral_centroid_mean": spectral_centroid_mean,
         "spectral_centroid_max": spectral_centroid_max,
     }
+
+
+def detect_disturbances(
+    waveform: np.ndarray,
+    sample_rate: int,
+    min_gap_sec: float = 0.6,
+    std_multiplier: float = 1.5,
+    floor_threshold: float = 0.02,
+) -> list[dict]:
+    rms = librosa.feature.rms(y=waveform).flatten()
+    times = librosa.times_like(rms, sr=sample_rate)
+
+    rms_mean = float(np.mean(rms))
+    rms_std = float(np.std(rms))
+    threshold = max(floor_threshold, rms_mean + (std_multiplier * rms_std))
+
+    disturbances: list[dict] = []
+    last_t = -1e9
+    for idx, amp in enumerate(rms):
+        t = float(times[idx])
+        if amp < threshold:
+            continue
+        if t - last_t < min_gap_sec:
+            continue
+        disturbances.append(
+            {
+                "t": round(t, 2),
+                "amp": float(amp),
+                "type": "noise",
+            }
+        )
+        last_t = t
+
+    return disturbances
