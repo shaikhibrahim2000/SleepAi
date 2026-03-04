@@ -62,6 +62,30 @@ def normalize_audio_path(path: str) -> str:
     return cleaned
 
 
+def persist_analysis_result(
+    client: Client,
+    sleep_session_id: str,
+    sleep_quality_score: int,
+    disturbances: list[dict],
+    features: dict,
+) -> str | None:
+    # Keep one canonical analysis row per sleep session for predictable reruns.
+    client.table("analysis_results").delete().eq(
+        "sleep_session_id", sleep_session_id
+    ).execute()
+
+    insert_payload = {
+        "sleep_session_id": sleep_session_id,
+        "sleep_quality_score": sleep_quality_score,
+        "disturbances": disturbances,
+        "features": features,
+    }
+    inserted = client.table("analysis_results").insert(insert_payload).execute()
+    if not inserted.data:
+        return None
+    return inserted.data[0].get("id")
+
+
 app = FastAPI(title="Sleep Sound Analysis API")
 
 app.add_middleware(
@@ -102,6 +126,19 @@ async def analyze(payload: AnalyzeRequest):
             disturbance_count=len(disturbances),
             rms_max=features["rms_max"],
         )
+        analysis_result_id = persist_analysis_result(
+            client=client,
+            sleep_session_id=payload.sleep_session_id,
+            sleep_quality_score=score_payload["sleep_quality_score"],
+            disturbances=disturbances,
+            features={
+                "duration_sec": features["duration_sec"],
+                "rms_mean": features["rms_mean"],
+                "rms_max": features["rms_max"],
+                "spectral_centroid_mean": features["spectral_centroid_mean"],
+                "spectral_centroid_max": features["spectral_centroid_max"],
+            },
+        )
     except HTTPException:
         raise
     except Exception as exc:
@@ -124,7 +161,8 @@ async def analyze(payload: AnalyzeRequest):
         "disturbances": disturbances,
         "sleep_quality_score": score_payload["sleep_quality_score"],
         "score_breakdown": score_payload["score_breakdown"],
-        "message": "Sleep score calculation complete. Database persistence comes next.",
+        "analysis_result_id": analysis_result_id,
+        "message": "Analysis persisted successfully.",
     }
 
 
