@@ -5,6 +5,10 @@ export default function UploadsList({ user }) {
   const [sessions, setSessions] = useState([]);
   const [status, setStatus] = useState("Loading...");
   const [busyId, setBusyId] = useState(null);
+  const [analysisBusyId, setAnalysisBusyId] = useState(null);
+  const [analysisBySession, setAnalysisBySession] = useState({});
+
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
   const loadSessions = async () => {
     if (!user) return;
@@ -63,7 +67,41 @@ export default function UploadsList({ user }) {
     }
 
     await loadSessions();
+    setAnalysisBySession((prev) => {
+      const next = { ...prev };
+      delete next[session.id];
+      return next;
+    });
     setBusyId(null);
+  };
+
+  const analyzeSession = async (session) => {
+    if (!session?.id || analysisBusyId) return;
+    setStatus("");
+    setAnalysisBusyId(session.id);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sleep_session_id: session.id,
+          audio_path: session.audio_path
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail || "Analyze request failed");
+      }
+      setAnalysisBySession((prev) => ({
+        ...prev,
+        [session.id]: payload
+      }));
+    } catch (error) {
+      setStatus(error.message || "Analyze request failed");
+    } finally {
+      setAnalysisBusyId(null);
+    }
   };
 
   return (
@@ -85,6 +123,13 @@ export default function UploadsList({ user }) {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-slate-500">{session.audio_format}</span>
                   <button
+                    className="rounded-full border border-cyan-700 px-3 py-1 text-xs text-cyan-200 disabled:opacity-50"
+                    onClick={() => analyzeSession(session)}
+                    disabled={analysisBusyId === session.id || busyId === session.id}
+                  >
+                    {analysisBusyId === session.id ? "Analyzing..." : "Analyze"}
+                  </button>
+                  <button
                     className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-200 disabled:opacity-50"
                     onClick={() => deleteSession(session)}
                     disabled={busyId === session.id}
@@ -102,6 +147,20 @@ export default function UploadsList({ user }) {
                   <span>End: {new Date(session.ended_at).toLocaleString()}</span>
                 ) : null}
               </div>
+              {analysisBySession[session.id] ? (
+                <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-xs text-slate-300">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span>
+                      Score:{" "}
+                      <strong className="text-emerald-300">
+                        {analysisBySession[session.id].sleep_quality_score}
+                      </strong>
+                    </span>
+                    <span>Disturbances: {analysisBySession[session.id].disturbance_count}</span>
+                    <span>Duration: {analysisBySession[session.id].duration_sec?.toFixed?.(2)}s</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

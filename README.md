@@ -19,6 +19,7 @@ AI-powered sleep sound analysis web application.
 Frontend expects:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_API_BASE_URL` (defaults to `http://127.0.0.1:8000` in code)
 
 Backend expects:
 - `SUPABASE_URL`
