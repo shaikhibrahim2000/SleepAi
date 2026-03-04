@@ -18,6 +18,7 @@ try:
         decode_audio_bytes,
         extract_features,
         detect_disturbances,
+        calculate_sleep_score,
     )
 except ImportError:
     from audio_processor import (
@@ -25,6 +26,7 @@ except ImportError:
         decode_audio_bytes,
         extract_features,
         detect_disturbances,
+        calculate_sleep_score,
     )
 
 
@@ -96,6 +98,10 @@ async def analyze(payload: AnalyzeRequest):
         waveform, sample_rate = decode_audio_bytes(audio_bytes, suffix=extension)
         features = extract_features(waveform, sample_rate)
         disturbances = detect_disturbances(waveform, sample_rate)
+        score_payload = calculate_sleep_score(
+            disturbance_count=len(disturbances),
+            rms_max=features["rms_max"],
+        )
     except HTTPException:
         raise
     except Exception as exc:
@@ -116,7 +122,9 @@ async def analyze(payload: AnalyzeRequest):
         },
         "disturbance_count": len(disturbances),
         "disturbances": disturbances,
-        "message": "Disturbance detection complete. Sleep score calculation comes next.",
+        "sleep_quality_score": score_payload["sleep_quality_score"],
+        "score_breakdown": score_payload["score_breakdown"],
+        "message": "Sleep score calculation complete. Database persistence comes next.",
     }
 
 

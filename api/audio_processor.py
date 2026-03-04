@@ -76,3 +76,26 @@ def detect_disturbances(
         last_t = t
 
     return disturbances
+
+
+def calculate_sleep_score(
+    disturbance_count: int,
+    rms_max: float,
+    disturbance_weight: int = 8,
+    loudness_scale: int = 40,
+    loudness_cap: int = 20,
+) -> dict:
+    disturbance_penalty = disturbance_count * disturbance_weight
+    loudness_penalty = min(loudness_cap, int(rms_max * loudness_scale))
+    total_penalty = disturbance_penalty + loudness_penalty
+    score = max(0, 100 - total_penalty)
+
+    return {
+        "sleep_quality_score": score,
+        "score_breakdown": {
+            "base_score": 100,
+            "disturbance_penalty": disturbance_penalty,
+            "loudness_penalty": loudness_penalty,
+            "total_penalty": total_penalty,
+        },
+    }
